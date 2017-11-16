@@ -106,4 +106,4 @@ venv.bak/
 .mypy_cache/
 
 .idea/*
-~$NEWRat_102_ChR2_MT-partial-5mW_21-07-2017.xlsx
+*.xlsx
