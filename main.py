@@ -1,5 +1,6 @@
 import csv
 import xlsxwriter
+from pylab import np, plt
 
 
 class Cell:
@@ -20,11 +21,12 @@ class Cell:
 
 
 def extract_data(file_path):
+
     with open(file_path, 'rt') as file:
 
         reader = csv.reader(file, delimiter='\t')
 
-        data = {}
+        data = dict()  # or {}
 
         current_key = None
 
@@ -37,11 +39,11 @@ def extract_data(file_path):
 
                 if first_cell.is_trial_number():
 
-                    if not current_key:
+                    if current_key is None:
                         raise Exception("I did not succeed finding the key.")
 
                     # Add the content of the second cell to the appropriate entry
-                    value = second_cell.content if second_cell.is_not_a_star() else 0
+                    value = int(second_cell.content) if second_cell.is_not_a_star() else 0
                     data[current_key].append(value)
                     print("A value has been extracted from row '{}'.".format(row))
 
@@ -58,10 +60,10 @@ def extract_data(file_path):
     n_max = max([len(v) for v in data.values()])
     data["trial"] = list(range(n_max))
 
-    # Remove values without any value
+    # Remove keys without any value
     data = {key: value for key, value in data.items() if len(value)}
 
-    # Complete with missing zeros
+    # Complete missing values with zeros
     for key in data.keys():
         n_zeros_to_add = n_max - len(data[key])
         data[key] += [0, ] * n_zeros_to_add
@@ -79,8 +81,9 @@ def write_a_new_file(data, new_file_path):
     column_names = sorted(list(data.keys()))
 
     # Put trial as first column
-    column_names.remove("trial")
-    column_names = ["trial", ] + column_names
+    if "trial" in column_names:
+        column_names.remove("trial")
+        column_names = ["trial", ] + column_names
 
     # Start to fill beginning from the first column.
     col = 0
@@ -106,13 +109,52 @@ def write_a_new_file(data, new_file_path):
     print("Xlsx file '{}' created with success.".format(new_file_path))
 
 
+def short_analysis(data, n_rt=2):
+
+    rt = np.asarray(data["RT {}".format(n_rt)])
+    rt_mt = np.asarray(data["RT-MT {}".format(n_rt)])
+
+    cond0 = rt[:] != 0
+    cond1 = rt_mt[:] != 0
+    idx = cond0 * cond1
+
+    rt = rt[idx]
+    rt_mt = rt_mt[idx]
+
+    mt = rt_mt - rt
+
+    print("Short analysis.")
+    print("mt is: \n", mt)
+
+    new_data = dict()
+    new_data["RT{}".format(n_rt)] = rt
+    new_data["MT{}".format(n_rt)] = mt
+
+    write_a_new_file(new_file_path="analysis.xlsx", data=new_data)
+
+    plt.scatter(mt, rt)
+    plt.xlabel("mt")
+    plt.ylabel("rt")
+    plt.savefig("scatter.pdf")
+    plt.close()
+
+    plt.hist(mt)
+    plt.savefig("hist_mt.pdf")
+    plt.close()
+
+    plt.hist(rt)
+    plt.savefig("hist_rt.pdf")
+    plt.close()
+
+
 def main():
 
     file_path = 'Rat_102_ChR2_MT-partial-5mW_21-07-2017.csv'
     new_file_path = 'NEW' + file_path.split(".")[0] + ".xlsx"
 
     data = extract_data(file_path=file_path)
-    write_a_new_file(data, new_file_path)
+    write_a_new_file(data=data, new_file_path=new_file_path)
+    short_analysis(data)
 
 
 if __name__ == "__main__":
