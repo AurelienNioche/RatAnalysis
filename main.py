@@ -111,7 +111,7 @@ def write_a_new_file(data, file_path):
     print("Xlsx file '{}' created with success.\n".format(file_path))
 
 
-def short_analysis(data, analysis_folder, figure_folder):
+def short_analysis(data, analysis_file_path, fig_root_name):
 
     # Suppose there are two idx for rt
     for rt_idx in [1, 2]:
@@ -143,24 +143,23 @@ def short_analysis(data, analysis_folder, figure_folder):
         new_data = dict()
         new_data["RT{}".format(rt_idx)] = rt
         new_data["MT{}".format(rt_idx)] = mt
-        new_file_path = analysis_folder + "/analysis_rt{}".format(rt_idx) + ".xlsx"
-        write_a_new_file(file_path=new_file_path, data=new_data)
+        write_a_new_file(file_path=analysis_file_path, data=new_data)
 
         # Do some plots
         plt.scatter(mt, rt)
         plt.xlabel("mt")
         plt.ylabel("rt")
-        plt.savefig(figure_folder + "/scatter_rt{}".format(rt_idx) + ".pdf")
+        plt.savefig("{}_scatter_rt{}.pdf".format(fig_root_name, rt_idx))
         plt.close()
 
         plt.hist(mt)
         plt.xlabel("mt")
-        plt.savefig(figure_folder + "/hist_mt{}".format(rt_idx) + ".pdf")
+        plt.savefig("{}_hist_mt{}.pdf".format(fig_root_name, rt_idx))
         plt.close()
 
         plt.hist(rt)
         plt.xlabel("rt")
-        plt.savefig(figure_folder + "/hist_rt{}".format(rt_idx) + ".pdf")
+        plt.savefig("{}_hist_rt{}.pdf".format(fig_root_name, rt_idx))
         plt.close()
 
 
@@ -196,11 +195,16 @@ def main():
             print("I will convert '{}'.\n".format(file_path))
 
             complete_file_path = data_folder + "/" + file_path
-            new_file_path = new_data_folder + "/" + "NEW" + file_path.split(".")[0] + ".xlsx"
+
+            file_path_without_extension = file_path.split(".")[0]
+
+            new_file_path = "{}/new_{}.xlsx".format(new_data_folder, file_path_without_extension)
+            analysis_file_path = "{}/analysis_{}.xlsx".format(analysis_folder, file_path_without_extension)
+            fig_root_name = "{}/fig_{}".format(figure_folder, file_path_without_extension)
 
             data = extract_data(file_path=complete_file_path)
             write_a_new_file(data=data, file_path=new_file_path)
-            short_analysis(data=data, analysis_folder=analysis_folder, figure_folder=figure_folder)
+            short_analysis(data=data, analysis_file_path=analysis_file_path, fig_root_name=fig_root_name)
 
         else:
 
