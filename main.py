@@ -1,5 +1,7 @@
 import csv
 import xlsxwriter
+from os import listdir, mkdir
+from os.path import isfile, join, exists
 from pylab import np, plt
 
 
@@ -71,10 +73,10 @@ def extract_data(file_path):
     return data
 
 
-def write_a_new_file(data, new_file_path):
+def write_a_new_file(data, file_path):
 
     # Create a workbook and add a worksheet.
-    workbook = xlsxwriter.Workbook(new_file_path)
+    workbook = xlsxwriter.Workbook(file_path)
     worksheet = workbook.add_worksheet()
 
     # Sort column names by alphabetic order
@@ -106,55 +108,103 @@ def write_a_new_file(data, new_file_path):
 
     workbook.close()
 
-    print("Xlsx file '{}' created with success.".format(new_file_path))
+    print("Xlsx file '{}' created with success.\n".format(file_path))
 
 
-def short_analysis(data, n_rt=2):
+def short_analysis(data, analysis_folder, figure_folder):
 
-    rt = np.asarray(data["RT {}".format(n_rt)])
-    rt_mt = np.asarray(data["RT-MT {}".format(n_rt)])
+    # Suppose there are two idx for rt
+    for rt_idx in [1, 2]:
 
-    cond0 = rt[:] != 0
-    cond1 = rt_mt[:] != 0
-    idx = cond0 * cond1
+        # Convert your data in array for easier manipulation
+        rt_column_name = "RT {}".format(rt_idx)
+        rt = np.asarray(data[rt_column_name])
+        rt_mt_column_name = "RT-MT {}".format(rt_idx)
+        rt_mt = np.asarray(data[rt_mt_column_name])
 
-    rt = rt[idx]
-    rt_mt = rt_mt[idx]
+        # Look where 'rt' and 'rt_mt' are different to zero
+        cond0 = rt[:] != 0
+        cond1 = rt_mt[:] != 0
 
-    mt = rt_mt - rt
+        # Combine the two conditions
+        idx = cond0 * cond1
 
-    print("Short analysis.")
-    print("mt is: \n", mt)
+        # Use the booleans as index and make a cut in your data
+        rt = rt[idx]
+        rt_mt = rt_mt[idx]
 
-    new_data = dict()
-    new_data["RT{}".format(n_rt)] = rt
-    new_data["MT{}".format(n_rt)] = mt
+        # Compute 'mt'
+        mt = rt_mt - rt
 
-    write_a_new_file(new_file_path="analysis.xlsx", data=new_data)
+        print("Short analysis.")
+        print("'mt {}' is: \n".format(rt_idx), mt)
 
-    plt.scatter(mt, rt)
-    plt.xlabel("mt")
-    plt.ylabel("rt")
-    plt.savefig("scatter.pdf")
-    plt.close()
+        # Save this in a new 'xlsx' file
+        new_data = dict()
+        new_data["RT{}".format(rt_idx)] = rt
+        new_data["MT{}".format(rt_idx)] = mt
+        new_file_path = analysis_folder + "/analysis_rt{}".format(rt_idx) + ".xlsx"
+        write_a_new_file(file_path=new_file_path, data=new_data)
 
-    plt.hist(mt)
-    plt.savefig("hist_mt.pdf")
-    plt.close()
+        # Do some plots
+        plt.scatter(mt, rt)
+        plt.xlabel("mt")
+        plt.ylabel("rt")
+        plt.savefig(figure_folder + "/scatter_rt{}".format(rt_idx) + ".pdf")
+        plt.close()
 
-    plt.hist(rt)
-    plt.savefig("hist_rt.pdf")
-    plt.close()
+        plt.hist(mt)
+        plt.xlabel("mt")
+        plt.savefig(figure_folder + "/hist_mt{}".format(rt_idx) + ".pdf")
+        plt.close()
+
+        plt.hist(rt)
+        plt.xlabel("rt")
+        plt.savefig(figure_folder + "/hist_rt{}".format(rt_idx) + ".pdf")
+        plt.close()
+
+
+def create_folder(folder_path):
+
+    if not exists(folder_path):
+        mkdir(folder_path)
 
 
 def main():
 
-    file_path = 'Rat_102_ChR2_MT-partial-5mW_21-07-2017.csv'
-    new_file_path = 'NEW' + file_path.split(".")[0] + ".xlsx"
+    # Path of the folder where your raw data are
+    data_folder = "data"
 
-    data = extract_data(file_path=file_path)
-    write_a_new_file(data=data, new_file_path=new_file_path)
-    short_analysis(data)
+    # Paths of the folder where the outputs of this script will go
+    new_data_folder = "new_data"
+    figure_folder = "figures"
+    analysis_folder = "analysis_results"
+
+    # Create the 'outputs' folders
+    create_folder(figure_folder)
+    create_folder(new_data_folder)
+    create_folder(analysis_folder)
+
+    # List data files
+    data_files = [f for f in listdir(data_folder) if isfile(join(data_folder, f))]
+    for file_path in data_files:
+
+        extension = file_path.split('.')[-1]
+
+        if extension in ("xls", "csv"):
+
+            print("I will convert '{}'.\n".format(file_path))
+
+            complete_file_path = data_folder + "/" + file_path
+            new_file_path = new_data_folder + "/" + "NEW" + file_path.split(".")[0] + ".xlsx"
+
+            data = extract_data(file_path=complete_file_path)
+            write_a_new_file(data=data, file_path=new_file_path)
+            short_analysis(data=data, analysis_folder=analysis_folder, figure_folder=figure_folder)
+
+        else:
+
+            print("I will ignore '{}' for conversion.".format(file_path))
 
 
 if __name__ == "__main__":
