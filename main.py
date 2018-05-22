@@ -34,29 +34,33 @@ def extract_data(file_path):
 
         for row in reader:
 
-            first_cell = Cell(row[0])
-            second_cell = Cell(row[1])
+            try:
+                first_cell = Cell(row[0] if len(row) >= 1 else '')
+                second_cell = Cell(row[1] if len(row) >= 2 else '')
 
-            if not first_cell.is_empty() and not first_cell.is_date():
+                if not first_cell.is_empty() and not first_cell.is_date():
 
-                if first_cell.is_trial_number():
+                    if first_cell.is_trial_number():
 
-                    if current_key is None:
-                        raise Exception("I did not succeed finding the key.")
+                        if current_key is None:
+                            raise Exception("I did not succeed finding the key.")
 
-                    # Add the content of the second cell to the appropriate entry
-                    value = int(second_cell.content) if second_cell.is_not_a_star() else 0
-                    data[current_key].append(value)
-                    print("A value has been extracted from row '{}'.".format(row))
+                        # Add the content of the second cell to the appropriate entry
+                        value = int(second_cell.content) if second_cell.is_not_a_star() else 0
+                        data[current_key].append(value)
+                        print("A value has been extracted from row '{}'.".format(row))
+
+                    else:
+                        # Create a new entry in the dictionary containing data
+                        current_key = first_cell.content
+                        data[current_key] = []
+                        print("A key has been extracted from row '{}'.".format(row))
 
                 else:
-                    # Create a new entry in the dictionary containing data
-                    current_key = first_cell.content
-                    data[current_key] = []
-                    print("A key has been extracted from row '{}'.".format(row))
+                    print("Row '{}' will be ignored (either the first cell is empty or it is a date).".format(row))
 
-            else:
-                print("Row '{}' will be ignored.".format(row))
+            except Exception as e:
+                print("Row '{}' will be ignored. It raised an exception ('{}')".format(row, e))
 
     # Add a column for trial number
     n_max = max([len(v) for v in data.values()])
